@@ -1,55 +1,47 @@
-from pathlib import Path
-from typing import List
-from urllib.request import urlretrieve
-
 import pandas as pd
-
+import string
+import re
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.preprocessing import LabelEncoder
 
 class DataLoader:
-    """Class to load the political parties dataset"""
-
-    data_url: str = "https://www.chesdata.eu/s/CHES2019V3.dta"
-
-    def __init__(self):
-        self.party_data = self._download_data()
-        self.non_features = []
-        self.index = ["party_id", "party", "country"]
-
-    def _download_data(self) -> pd.DataFrame:
-        data_path, _ = urlretrieve(
-            self.data_url,
-            Path(__file__).parents[2].joinpath(*["data", "CHES2019V3.dta"]),
-        )
-        return pd.read_stata(data_path)
-
-    def vectorizer(self):
-        pass
-# a bit too irrelevant and easy for ml engineer
-    # def remove_duplicates(self, df: pd.DataFrame) -> pd.DataFrame:
-    #     """Write a function to remove duplicates in a dataframe"""
-    #     ##### YOUR CODE GOES HERE #####
-    #     pass
-
-    # def remove_nonfeature_cols(
-    #     self, df: pd.DataFrame, non_features: List[str], index: List[str]
-    # ) -> pd.DataFrame:
-    #     """Write a function to remove certain features cols and set certain cols as indices
-    #     in a dataframe"""
-    #     ##### YOUR CODE GOES HERE #####
-    #     pass
-
-    def handle_NaN_values(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Write a function to handle NaN values in a dataframe"""
-        ##### YOUR CODE GOES HERE #####
-        pass
+    def __init__(self, filepath="data/Tweets.csv"):
+        self.filepath = filepath
+        self.load_data()
     
-    def scale_features(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Write a function to normalise values in a dataframe. Use StandardScaler."""
-        ##### YOUR CODE GOES HERE #####
-        pass
+    def load_data(self):
+        """Loads data from a CSV file."""
+        self.data = pd.read_csv(self.filepath)
 
+    @staticmethod
+    def remove_punct_and_digits(text):
+        remove_chars = string.punctuation + string.digits  # Define characters to remove
+        translator = str.maketrans('', '', remove_chars)  # Create a translation table
+        return text.translate(translator)
+    
+    @staticmethod
+    def remove_urls(text):
+        url_pattern = r'https?://\S+|www\.\S+'
+        return re.sub(url_pattern, '', text)
+    
+    def clean_text(self, text):
+        text = str(text).lower()
+        text = self.remove_urls(text)
+        text = self.remove_punct_and_digits(text)
+        return text.strip()
 
-    def preprocess_data(self):
-        """Write a function to combine all pre-processing steps for the dataset"""
-        ##### TODO: we complete this ahead of interview for sake of time #####
-        pass
+    @staticmethod
+    def vectorize_text(tweets):
+        vectorizer = TfidfVectorizer (max_features=2500, min_df=1, max_df=0.8)
+        return vectorizer.fit_transform(tweets).toarray()
+
+    @staticmethod
+    def label_encoder(parties):
+        le = LabelEncoder()
+        return le.fit_transform(parties)
+
+    def preprocess(self):
+        self.data.Tweet = self.data.Tweet.apply(self.clean_text)
+        self.data.Party = self.data.Party.apply(self.clean_text)
+        return self.vectorize_text(self.data.Tweet.values), self.label_encoder(self.data.Party.values)
+    

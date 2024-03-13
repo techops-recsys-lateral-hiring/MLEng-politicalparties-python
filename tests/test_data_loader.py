@@ -2,42 +2,47 @@ import numpy as np
 import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
-from text_loader.loader import DataLoader
-
-# TODO: change test to test text cleaning functions
+import sys #TODO fix path
+sys.path.append('src/text_loader')
+from loader import DataLoader
 
 @pytest.fixture
 def mock_df() -> pd.DataFrame:
     data = {
-        "id": [0, 1, 2, 2],
-        "col1": [1, 2, 3, 3],
-        "col2": [30.0, np.nan, 30.0, 30.0],
-        "col3": [5, 7, 12, 12],
-        "non_feature": ["a", "b", "c", "c"],
-        "all_nans": [np.nan] * 4,
+        "Party": ['Republican', 'Democrat'],
+        "Tweet": ['blah!23564 https://hello.com', 'bloh@skdjfps']
     }
-    df = pd.DataFrame(data=data)
+    df = pd.DataFrame(data=data, index=[0,1])
     return df
 
+@pytest.fixture
+def data_loader(mocker, mock_df):
+    mocker.patch('pandas.read_csv', return_value=mock_df)
+    return DataLoader()
 
-def test_download_data():
+def test_load_data(mocker, mock_df):
     data_loader = DataLoader()
-    assert data_loader.party_data.shape == (277, 55)
+    mocker.patch.object(data_loader, 'data',  mock_df)
+    data_loader.load_data()
+    assert not data_loader.data.empty, "Data should not be empty after loading."
 
+def test_remove_punct_and_digits(mock_df):
+    text = mock_df['Tweet'].iloc[1]
+    cleaned_text = DataLoader.remove_punct_and_digits(text)
+    assert cleaned_text == "blohskdjfps"
 
-def test_preprocess_data(mocker, mock_df: pd.DataFrame):
-    data_loader = DataLoader()
-    mocker.patch.object(data_loader, "party_data", mock_df)
-    mocker.patch.object(data_loader, "non_features", ["non_feature"])
-    mocker.patch.object(data_loader, "index", "id")
-    data_loader.preprocess_data()
-    expected_df = pd.DataFrame(
-        data={
-            "col1": [-1.225, 0, 1.225],
-            "col2": [0.0] * 3,
-            "col3": [-1.019, -0.340, 1.359],
-        },
-        index=[0, 1, 2],
-    )
-    expected_df.index.name = "id"
-    assert_frame_equal(data_loader.party_data, expected_df, check_less_precise=3)
+def test_remove_urls(mock_df):
+    text = mock_df['Tweet'].iloc[0]
+    cleaned_text = DataLoader.remove_urls(text)
+    assert cleaned_text == 'blah!23564 '
+
+def test_clean_text(data_loader, mock_df):
+    text = mock_df['Tweet'].iloc[0]
+    cleaned_text = data_loader.clean_text(text)
+    assert cleaned_text == "blah"
+    
+def test_preprocess(data_loader):
+    features, labels = data_loader.preprocess()
+    assert isinstance(features, np.ndarray), "Features should be a numpy array"
+    assert isinstance(labels, np.ndarray), "Labels should be a numpy array"
+
