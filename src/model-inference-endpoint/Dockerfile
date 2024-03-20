@@ -2,13 +2,13 @@ FROM python:3.9
 
 WORKDIR /usr/src/app
 
-COPY ./embedding-inference-endpoint/requirements.txt .
+COPY ./model-inference-endpoint/requirements.txt .
 
-COPY Model .
+# COPY Model .
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY ./embedding-inference-endpoint .
+COPY ./model-inference-endpoint .
 
 EXPOSE 8000
 
