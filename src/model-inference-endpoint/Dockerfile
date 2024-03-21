@@ -4,11 +4,11 @@ WORKDIR /usr/src/app
 
 COPY ./model-inference-endpoint/requirements.txt .
 
-# COPY Model .
-
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY ./model-inference-endpoint .
+
+COPY ./text_loader/ ./text_loader/
+COPY ./model-inference-endpoint/ .
 
 EXPOSE 8000
 
